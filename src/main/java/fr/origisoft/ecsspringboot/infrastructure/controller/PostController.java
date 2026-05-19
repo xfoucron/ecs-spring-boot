@@ -16,6 +16,7 @@ import fr.origisoft.ecsspringboot.infrastructure.controller.response.CreatePostR
 import fr.origisoft.ecsspringboot.infrastructure.controller.response.FindPostResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.spi.LoggingEventBuilder;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -65,11 +66,12 @@ public class PostController {
     public ResponseEntity<?> handlePostNotFound(PostNotFoundException exception) {
         final String eventName = "postNotFound";
 
-        log.atWarn()
-                .setMessage(exception.getMessage())
-                .addKeyValue("event.type", eventName)
-                .addKeyValue("post.id", exception.postId().id())
-                .log();
+        addBaseMetadata(
+                log.atWarn()
+                        .addKeyValue("post.id", exception.postId().id())
+                        .addKeyValue("event.reason", "post_not_found")
+                        .addKeyValue("event.action", "post_get")
+                , exception).log();
 
         return ResponseEntity
                 .status(404)
@@ -83,12 +85,13 @@ public class PostController {
     public ResponseEntity<?> handlePostMessageTooLong(PostMessageTooLongException exception) {
         final String eventName = "postMessageTooLong";
 
-        log.atWarn()
-                .setMessage(exception.getMessage())
-                .addKeyValue("event.type", eventName)
-                .addKeyValue("post.message.max_length", exception.maxLength())
-                .addKeyValue("post.message.actual_length", exception.actualLength())
-                .log();
+        addBaseMetadata(
+                log.atWarn()
+                        .addKeyValue("event.action", "post_create")
+                        .addKeyValue("event.reason", "message_too_long")
+                        .addKeyValue("post.message.max_length", exception.maxLength())
+                        .addKeyValue("post.message.actual_length", exception.actualLength())
+                , exception).log();
 
         return ResponseEntity
                 .badRequest()
@@ -96,5 +99,12 @@ public class PostController {
                         eventName,
                         exception.getMessage()
                 ));
+    }
+
+    private LoggingEventBuilder addBaseMetadata(LoggingEventBuilder base, Throwable throwable) {
+        return base
+                .setMessage(throwable.getMessage())
+                .addKeyValue("error.type", throwable.getClass().getSimpleName())
+                .addKeyValue("event.outcome", "failure");
     }
 }
