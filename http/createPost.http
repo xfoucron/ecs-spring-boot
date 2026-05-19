@@ -1,0 +1,7 @@
+# Create a new post
+POST http://localhost:8080/posts
+Content-Type: application/json
+
+{
+  "message": "hello"
+}
